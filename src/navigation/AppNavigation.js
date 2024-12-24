@@ -10,7 +10,7 @@ import AssignmentListScreen from '../screens/AssignmentList/AssignmentListScreen
 import AssignmentDetailScreen from '../screens/AssignmentDetail/AssignmentDetailScreen';
 
 const Stack = createStackNavigator();
-
+console.log('test');
 const AppNavigation = () => {
   return (
     <SafeAreaProvider>
