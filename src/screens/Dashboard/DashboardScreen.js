@@ -1,3 +1,5 @@
+import {useNavigation} from '@react-navigation/native';
+import {inject, observer} from 'mobx-react';
 import React, {useEffect, useState} from 'react';
 import {
   Alert,
@@ -9,108 +11,97 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {getDashboard} from '../../api/user';
+import {useStore} from '../../stores/storeContext';
 import {removeAccessToken} from '../../utils/storage';
 
-const DashboardScreen = ({navigation}) => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+const DashboardScreen = inject('dashboard')(
+  observer(({dashboard}) => {
+    const navigation = useNavigation();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    useEffect(() => {
+      dashboard.fetchDashboardData().catch(console.warn);
+    }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getDashboard();
-        if (data.success) {
-          setDashboardData(data.data);
-        } else {
-          console.error('Dashboard data fetch failed:', data.message);
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      }
+    const toggleMenu = () => {
+      setIsMenuOpen(!isMenuOpen);
     };
 
-    fetchData();
-  }, []);
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await removeAccessToken();
-      navigation.replace('Login');
-    } catch (error) {
-      console.error('Logout error:', error);
-      Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu.');
-    }
-  };
-
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={toggleMenu} style={styles.menuIcon}>
-          <Icon name="menu" size={30} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>
-          Hoş Geldiniz, {dashboardData ? dashboardData.user : ''}
-        </Text>
-      </View>
-
-      {/* Menü İçeriği */}
-      {isMenuOpen && (
-        <View style={styles.menu}>
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-            <Text style={styles.menuItem}>Profil</Text>
+    const handleLogout = async () => {
+      try {
+        await removeAccessToken();
+        navigation.replace('Login');
+      } catch (error) {
+        console.error('Logout error:', error);
+        Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu.');
+      }
+    };
+    const dashboardData = dashboard.data;
+    return (
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={toggleMenu} style={styles.menuIcon}>
+            <Icon name="menu" size={30} color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('AssignmentList')}>
-            <Text style={styles.menuItem}>Atamalar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout}>
-            <Text style={[styles.menuItem, styles.logoutButton]}>Çıkış</Text>
-          </TouchableOpacity>
+          <Text style={styles.headerText}>
+            Hoş Geldiniz, {dashboard.data ? dashboard.data.user : ''}
+          </Text>
         </View>
-      )}
 
-      {/* Dashboard İçeriği */}
-      {dashboardData && (
-        <View style={styles.cardContainer}>
-          <View style={[styles.card, {backgroundColor: '#FFC107'}]}>
-            <Icon name="assignment" size={40} color="#fff" />
-            <Text style={styles.cardText}>
-              Atanan Dosya: {dashboardData.assignedfile}
-            </Text>
+        {/* Menü İçeriği */}
+        {isMenuOpen && (
+          <View style={styles.menu}>
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+              <Text style={styles.menuItem}>Profil</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AssignmentList')}>
+              <Text style={styles.menuItem}>Atamalar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout}>
+              <Text style={[styles.menuItem, styles.logoutButton]}>Çıkış</Text>
+            </TouchableOpacity>
           </View>
-          <View style={[styles.card, {backgroundColor: '#4CAF50'}]}>
-            <Icon name="assignment-turned-in" size={40} color="#fff" />
-            <Text style={styles.cardText}>
-              Hazır Dosya: {dashboardData.readytogofile}
-            </Text>
+        )}
+
+        {/* Dashboard İçeriği */}
+        {dashboardData && (
+          <View style={styles.cardContainer}>
+            <View style={[styles.card, {backgroundColor: '#FFC107'}]}>
+              <Icon name="assignment" size={40} color="#fff" />
+              <Text style={styles.cardText}>
+                Atanan Dosya: {dashboardData.assignedfile}
+              </Text>
+            </View>
+            <View style={[styles.card, {backgroundColor: '#4CAF50'}]}>
+              <Icon name="assignment-turned-in" size={40} color="#fff" />
+              <Text style={styles.cardText}>
+                Hazır Dosya: {dashboardData.readytogofile}
+              </Text>
+            </View>
+            <View style={[styles.card, {backgroundColor: '#F44336'}]}>
+              <Icon name="assignment-late" size={40} color="#fff" />
+              <Text style={styles.cardText}>
+                Bugün Kapanan: {dashboardData.closedfiletoday}
+              </Text>
+            </View>
+            <View style={[styles.card, {backgroundColor: '#2196F3'}]}>
+              <Icon name="assignment-turned-in" size={40} color="#fff" />
+              <Text style={styles.cardText}>
+                Bu Periyod Kapanan: {dashboardData.closedfilethisperiod}
+              </Text>
+            </View>
+            <View style={[styles.card, {backgroundColor: '#9C27B0'}]}>
+              <Icon name="assignment-turned-in" size={40} color="#fff" />
+              <Text style={styles.cardText}>
+                Geçen Periyod Kapanan: {dashboardData.closedfilelastperiod}
+              </Text>
+            </View>
           </View>
-          <View style={[styles.card, {backgroundColor: '#F44336'}]}>
-            <Icon name="assignment-late" size={40} color="#fff" />
-            <Text style={styles.cardText}>
-              Bugün Kapanan: {dashboardData.closedfiletoday}
-            </Text>
-          </View>
-          <View style={[styles.card, {backgroundColor: '#2196F3'}]}>
-            <Icon name="assignment-turned-in" size={40} color="#fff" />
-            <Text style={styles.cardText}>
-              Bu Periyod Kapanan: {dashboardData.closedfilethisperiod}
-            </Text>
-          </View>
-          <View style={[styles.card, {backgroundColor: '#9C27B0'}]}>
-            <Icon name="assignment-turned-in" size={40} color="#fff" />
-            <Text style={styles.cardText}>
-              Geçen Periyod Kapanan: {dashboardData.closedfilelastperiod}
-            </Text>
-          </View>
-        </View>
-      )}
-    </ScrollView>
-  );
-};
+        )}
+      </ScrollView>
+    );
+  }),
+);
 
 const styles = StyleSheet.create({
   container: {

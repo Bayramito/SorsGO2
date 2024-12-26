@@ -1,3 +1,5 @@
+import {useNavigation} from '@react-navigation/native';
+import {inject, observer} from 'mobx-react';
 import React, {useState} from 'react';
 import {
   Alert,
@@ -10,92 +12,101 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {login} from '../../api/auth';
+import {askToOpenSettings} from '../../utils/permission';
 import {getAccessToken, storeAccessToken} from '../../utils/storage';
 import {registerDevice} from '../../api/user';
 import DeviceInfo from 'react-native-device-info';
 
-const LoginScreen = ({navigation}) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+const LoginScreen = inject('app')(
+  observer(({app}) => {
+    const navigation = useNavigation();
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    setLoading(true);
-    try {
-      const data = await login(username, password);
-      console.log('Login data:', data); // Eklendi: Gelen data'yı kontrol etmek için
-      if (data.success) {
-        await storeAccessToken(data.data.accessToken);
-        await registerDeviceInfo();
-        navigation.replace('Dashboard');
-      } else {
-        Alert.alert('Hata', data.message || 'Giriş başarısız.');
+    const handleLogin = async () => {
+      if (!app.locationPermission) {
+        askToOpenSettings();
+        return;
       }
-    } catch (error) {
-      console.log('Login Error:', error);
-      Alert.alert('Hata', 'Giriş yapılırken bir hata oluştu.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const testToken = async () => {
-    const storedToken = await getAccessToken();
-    console.log('Stored Token:', storedToken);
-  };
+      setLoading(true);
+      try {
+        const data = await login(username, password);
+        console.log('Login data:', data); // Eklendi: Gelen data'yı kontrol etmek için
+        if (data.success) {
+          await storeAccessToken(data.data.accessToken);
+          await registerDeviceInfo();
+          navigation.replace('Dashboard');
+        } else {
+          Alert.alert('Hata', data.message || 'Giriş başarısız.');
+        }
+      } catch (error) {
+        console.log('Login Error:', error);
+        Alert.alert('Hata', 'Giriş yapılırken bir hata oluştu.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const registerDeviceInfo = async () => {
-    try {
-      const deviceInfo = {
-        serialNumber: await DeviceInfo.getSerialNumber(),
-        manufacturer: await DeviceInfo.getManufacturer(),
-        model: DeviceInfo.getModel(),
-        osVersion: DeviceInfo.getSystemVersion(),
-        platform: Platform.OS,
-        hardware: await DeviceInfo.getHardware(),
-        appName: await DeviceInfo.getApplicationName(),
-        appVersion: DeviceInfo.getVersion(),
-        product: await DeviceInfo.getProduct(),
-        totalDiskSpace: await DeviceInfo.getTotalDiskCapacity(),
-      };
+    const testToken = async () => {
+      const storedToken = await getAccessToken();
+      console.log('Stored Token:', storedToken);
+    };
 
-      await registerDevice(deviceInfo);
-      console.log('Cihaz kaydedildi');
-    } catch (error) {
-      console.error('Error registering device:', error);
-      Alert.alert('Hata', 'Cihaz kaydedilemedi.');
-    }
-  };
+    const registerDeviceInfo = async () => {
+      try {
+        const deviceInfo = {
+          serialNumber: await DeviceInfo.getSerialNumber(),
+          manufacturer: await DeviceInfo.getManufacturer(),
+          model: DeviceInfo.getModel(),
+          osVersion: DeviceInfo.getSystemVersion(),
+          platform: Platform.OS,
+          hardware: await DeviceInfo.getHardware(),
+          appName: await DeviceInfo.getApplicationName(),
+          appVersion: DeviceInfo.getVersion(),
+          product: await DeviceInfo.getProduct(),
+          totalDiskSpace: await DeviceInfo.getTotalDiskCapacity(),
+        };
 
-  return (
-    <View style={styles.container}>
-      <Image
-        source={require('../../assets/sorsgologo.png')}
-        style={styles.logo}
-      />
-      <View style={styles.inputContainer}>
-        <Icon name="person" size={24} color="#888" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="Kullanıcı Adı"
-          value={username}
-          onChangeText={setUsername}
+        await registerDevice(deviceInfo);
+        console.log('Cihaz kaydedildi');
+      } catch (error) {
+        console.error('Error registering device:', error);
+        Alert.alert('Hata', 'Cihaz kaydedilemedi.');
+      }
+    };
+
+    return (
+      <View style={styles.container}>
+        <Image
+          source={require('../../assets/sorsgologo.png')}
+          style={styles.logo}
         />
+        <View style={styles.inputContainer}>
+          <Icon name="person" size={24} color="#888" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Kullanıcı Adı"
+            value={username}
+            onChangeText={setUsername}
+          />
+        </View>
+        <View style={styles.inputContainer}>
+          <Icon name="lock" size={24} color="#888" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Şifre"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+        </View>
+        <Button title="GİRİŞ YAP" onPress={handleLogin} disabled={loading} />
       </View>
-      <View style={styles.inputContainer}>
-        <Icon name="lock" size={24} color="#888" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="Şifre"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-      </View>
-      <Button title="GİRİŞ YAP" onPress={handleLogin} disabled={loading} />
-    </View>
-  );
-};
+    );
+  }),
+);
 
 const styles = StyleSheet.create({
   container: {
